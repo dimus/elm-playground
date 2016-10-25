@@ -7,7 +7,18 @@ import Html.Events exposing (..)
 import Json.Decode as Json exposing ((:=), object2, int, decodeString, map)
 import Mouse
 import Svg.Attributes as SA exposing (..)
-import Svg exposing (defs, linearGradient, style, stop, g, circle, rect, svg, Svg)
+import Svg
+    exposing
+        ( defs
+        , linearGradient
+        , style
+        , stop
+        , g
+        , circle
+        , rect
+        , svg
+        , Svg
+        )
 
 
 main =
