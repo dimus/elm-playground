@@ -5,7 +5,7 @@ import Html.App as App
 import Html.Attributes as HA exposing (..)
 import Html.Events exposing (..)
 import Json.Decode as Json exposing ((:=), object2, int, decodeString, map)
-import Mouse
+import Mouse exposing (position)
 import String
 import Svg.Attributes as SA exposing (..)
 import Svg.Keyed as SK exposing (node)
@@ -44,7 +44,12 @@ type alias Model =
 type alias Landmark =
     { pos : Mouse.Position
     , label : String
+    , drag : Maybe Drag
     }
+
+
+type alias Drag =
+    { start : Mouse.Position, current : Mouse.Position }
 
 
 init : ( Model, Cmd Msg )
@@ -57,21 +62,63 @@ init =
 
 
 type Msg
-    = MouseMsg Mouse.Position
+    = CreateLandmark Mouse.Position
     | Reset
+    | DragStart DotId Mouse.Position
+    | DragAt DotId Mouse.Position
+    | DragEnd DotId Mouse.Position
+
+
+type alias DotId =
+    String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        MouseMsg pos ->
+        CreateLandmark pos ->
             if (List.length model >= 10 || pos.x > 400 || pos.y > 400) then
                 ( model, Cmd.none )
             else
-                ( (Landmark pos (label model)) :: model, Cmd.none )
+                ( (Landmark pos (label model) Nothing) :: model, Cmd.none )
 
         Reset ->
             init
+
+        DragStart label pos ->
+            let
+                drag =
+                    Just <| Drag pos pos
+            in
+                ( (List.map (updateDrag label drag) model), Cmd.none )
+
+        DragAt label pos ->
+            ( (List.map (updateDragPos label pos) model), Cmd.none )
+
+        DragEnd label pos ->
+            let
+                drag =
+                    Nothing
+            in
+                ( (List.map (updateDrag label drag) model), Cmd.none )
+
+
+updateDragPos label pos landmark =
+    let
+        drag =
+            landmark.drag
+    in
+        if landmark.label == label then
+            { landmark | drag = Maybe.map (\{ start } -> Drag start pos) drag }
+        else
+            landmark
+
+
+updateDrag label drag landmark =
+    if landmark.label == label then
+        { landmark | drag = drag }
+    else
+        landmark
 
 
 
@@ -80,15 +127,29 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Mouse.clicks MouseMsg
+    let
+        draggedLabel =
+            draggedLandmark model
+    in
+        case draggedLabel of
+            Nothing ->
+                Sub.none
+
+            Just l ->
+                Sub.batch
+                    [ Mouse.moves (DragAt l.label)
+                    , Mouse.ups (DragEnd l.label)
+                    ]
+
+
+draggedLandmark : Model -> Maybe Landmark
+draggedLandmark model =
+    List.head <|
+        List.filter (\landmark -> landmark.drag /= Nothing) model
 
 
 
 -- VIEW
-
-
-(=>) =
-    (,)
 
 
 view : Model -> Html Msg
@@ -99,8 +160,10 @@ view model =
             , SA.height "400px"
             , viewBox "0 0 400 400"
             , HA.style [ ( "border", "1px solid #eee" ) ]
+            , onMouseClick
             ]
             (drawLandmarks model)
+        , div [] [ text <| toString model ]
         , br [] []
         , slider model
         , button [ onClick Reset ] [ text "Reset" ]
@@ -200,7 +263,14 @@ makeLandmark lm =
                     , textAnchor "middle"
                     ]
                     [ Svg.text l ]
-                , circle [ cx x, cy y, r "5", stroke "#0B79CE" ] []
+                , circle
+                    [ cx x
+                    , cy y
+                    , r "5"
+                    , stroke "#0B79CE"
+                    , onMouseDown l
+                    ]
+                    []
                 ]
     in
         ( l, svgLandmark )
@@ -224,3 +294,11 @@ header =
         , th [] [ text "X" ]
         , th [] [ text "Y" ]
         ]
+
+
+onMouseClick =
+    on "dblclick" (Json.map CreateLandmark Mouse.position)
+
+
+onMouseDown label =
+    on "mousedown" (Json.map (DragStart label) Mouse.position)
