@@ -168,15 +168,6 @@ slider model =
                         , SA.style """fill:url(#darkFaderGradient)"""
                         ]
                         []
-                      -- , circle
-                      --     [ SA.class "faderKnob"
-                      --     , SA.id "svg03"
-                      --     , r "14"
-                      --     , cx (toString percent)
-                      --     , cy "5"
-                      --     , SA.style """fill:url(#lightFaderGradient)"""
-                      --     ]
-                      --     []
                     ]
                 ]
             ]
