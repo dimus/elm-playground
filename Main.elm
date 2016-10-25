@@ -2,11 +2,13 @@ module Main exposing (..)
 
 import Html exposing (..)
 import Html.App as App
-import Html.Attributes exposing (..)
+import Html.Attributes as HA exposing (..)
 import Html.Events exposing (..)
 import Json.Decode as Json exposing ((:=), object2, int, decodeString, map)
 import Mouse
+import String
 import Svg.Attributes as SA exposing (..)
+import Svg.Keyed as SK exposing (node)
 import Svg
     exposing
         ( defs
@@ -17,6 +19,7 @@ import Svg
         , circle
         , rect
         , svg
+        , text'
         , Svg
         )
 
@@ -39,7 +42,9 @@ type alias Model =
 
 
 type alias Landmark =
-    Mouse.Position
+    { pos : Mouse.Position
+    , label : String
+    }
 
 
 init : ( Model, Cmd Msg )
@@ -63,7 +68,7 @@ update msg model =
             if (List.length model >= 10 || pos.x > 400 || pos.y > 400) then
                 ( model, Cmd.none )
             else
-                ( pos :: model, Cmd.none )
+                ( (Landmark pos (label model)) :: model, Cmd.none )
 
         Reset ->
             init
@@ -89,10 +94,11 @@ subscriptions model =
 view : Model -> Html Msg
 view model =
     div []
-        [ Svg.svg
+        [ SK.node "svg"
             [ SA.width "400px"
             , SA.height "400px"
             , viewBox "0 0 400 400"
+            , HA.style [ ( "border", "1px solid #eee" ) ]
             ]
             (drawLandmarks model)
         , br [] []
@@ -102,16 +108,8 @@ view model =
         ]
 
 
-
--- drawLandmarks : Model -> Svg Msg
-
-
 drawLandmarks model =
-    List.map makeLandmark <| Debug.log "Model: " model
-
-
-
--- makeLandmark : Landmark -> Svg Msg
+    List.map makeLandmark <| model
 
 
 slider : Model -> Svg.Svg Msg
@@ -173,30 +171,56 @@ slider model =
             ]
 
 
+label : Model -> String
+label model =
+    (String.cons 'd') <| toString ((List.length model) + 1)
+
+
 makeLandmark lm =
     let
         x =
-            toString lm.x
+            toString lm.pos.x
 
         y =
-            toString lm.y
+            toString lm.pos.y
+
+        yl =
+            toString (lm.pos.y - 10) ++ "px"
+
+        l =
+            lm.label
+
+        svgLandmark =
+            g []
+                [ text'
+                    [ SA.x x
+                    , SA.y yl
+                    , fontFamily "sans-serif"
+                    , fontSize "10px"
+                    , textAnchor "middle"
+                    ]
+                    [ Svg.text l ]
+                , circle [ cx x, cy y, r "5", stroke "#0B79CE" ] []
+                ]
     in
-        circle [ cx x, cy y, r "5", stroke "#0B79CE" ] []
+        ( l, svgLandmark )
 
 
 rows model =
-    header :: (List.map row model)
+    header :: List.reverse (List.map row model)
 
 
-row pos =
+row model =
     tr []
-        [ td [] [ text (toString pos.x) ]
-        , td [] [ text (toString pos.y) ]
+        [ td [] [ text model.label ]
+        , td [] [ text (toString model.pos.x) ]
+        , td [] [ text (toString model.pos.y) ]
         ]
 
 
 header =
     tr []
-        [ th [] [ text "X" ]
+        [ th [] [ text "Label" ]
+        , th [] [ text "X" ]
         , th [] [ text "Y" ]
         ]
