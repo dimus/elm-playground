@@ -53,6 +53,7 @@ init =
 
 type Msg
     = MouseMsg Mouse.Position
+    | Reset
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -63,6 +64,9 @@ update msg model =
                 ( model, Cmd.none )
             else
                 ( pos :: model, Cmd.none )
+
+        Reset ->
+            init
 
 
 
@@ -93,6 +97,7 @@ view model =
             (drawLandmarks model)
         , br [] []
         , slider model
+        , button [ onClick Reset ] [ text "Reset" ]
         , table [] (rows model)
         ]
 
@@ -121,7 +126,7 @@ slider model =
         Svg.svg
             [ SA.width <| toString (length + 100) ++ "px"
             , SA.height "40px"
-            , viewBox "-10 -5 500 20"
+            , viewBox "-10 -5 500 40"
             ]
             [ defs []
                 [ linearGradient
@@ -148,8 +153,8 @@ slider model =
                     [ rect
                         [ SA.class "faderBackground"
                         , SA.id "svg01"
-                        , rx "5"
-                        , SA.height "10"
+                        , rx "10"
+                        , SA.height "20"
                         , SA.width (toString length)
                         , SA.style """fill:url(#lightFaderGradient)"""
                         ]
@@ -157,21 +162,21 @@ slider model =
                     , rect
                         [ SA.class "faderForeground"
                         , SA.id "svg02"
-                        , rx "5"
-                        , SA.height "10"
+                        , rx "10"
+                        , SA.height "20"
                         , SA.width (toString percent)
                         , SA.style """fill:url(#darkFaderGradient)"""
                         ]
                         []
-                    , circle
-                        [ SA.class "faderKnob"
-                        , SA.id "svg03"
-                        , r "7"
-                        , cx (toString percent)
-                        , cy "5"
-                        , SA.style """fill:url(#lightFaderGradient)"""
-                        ]
-                        []
+                      -- , circle
+                      --     [ SA.class "faderKnob"
+                      --     , SA.id "svg03"
+                      --     , r "14"
+                      --     , cx (toString percent)
+                      --     , cy "5"
+                      --     , SA.style """fill:url(#lightFaderGradient)"""
+                      --     ]
+                      --     []
                     ]
                 ]
             ]
