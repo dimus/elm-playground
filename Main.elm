@@ -90,20 +90,28 @@ update msg model =
                 drag =
                     Just <| Drag pos pos
             in
-                ( (List.map (updateDrag label drag) model), Cmd.none )
+                ( (List.map (startDrag label drag) model), Cmd.none )
 
         DragAt label pos ->
-            ( (List.map (updateDragPos label pos) model), Cmd.none )
+            ( (List.map (updateDrag label pos) model), Cmd.none )
 
         DragEnd label pos ->
             let
                 drag =
                     Nothing
             in
-                ( (List.map (updateDrag label drag) model), Cmd.none )
+                ( (List.map (stopDrag label) model), Cmd.none )
 
 
-updateDragPos label pos landmark =
+stopDrag label landmark =
+    let
+        pos =
+            getRealPos landmark
+    in
+        { landmark | pos = pos, drag = Nothing }
+
+
+updateDrag label pos landmark =
     let
         drag =
             landmark.drag
@@ -114,7 +122,7 @@ updateDragPos label pos landmark =
             landmark
 
 
-updateDrag label drag landmark =
+startDrag label drag landmark =
     if landmark.label == label then
         { landmark | drag = drag }
     else
