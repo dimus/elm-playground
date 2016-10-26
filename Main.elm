@@ -9,6 +9,9 @@ import Mouse exposing (position)
 import String
 import Svg.Attributes as SA exposing (..)
 import Svg.Keyed as SK exposing (node)
+import AppTypes exposing (..)
+import AppDrag exposing (..)
+import AppCalc exposing (..)
 import Svg
     exposing
         ( defs
@@ -38,21 +41,6 @@ main =
 -- MODEL
 
 
-type alias Model =
-    List Landmark
-
-
-type alias Landmark =
-    { pos : Mouse.Position
-    , label : String
-    , drag : Maybe Drag
-    }
-
-
-type alias Drag =
-    { start : Mouse.Position, current : Mouse.Position }
-
-
 init : ( Model, Cmd Msg )
 init =
     ( [], Cmd.none )
@@ -62,75 +50,35 @@ init =
 -- UPDATE
 
 
-type Msg
-    = CreateLandmark Mouse.Position
-    | Reset
-    | DragStart Label Mouse.Position
-    | DragAt Label Mouse.Position
-    | DragEnd Label Mouse.Position
-
-
-type alias Label =
-    String
-
-
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         CreateLandmark pos ->
-            if (List.length model >= 10 || pos.x > 400 || pos.y > 400) then
-                ( model, Cmd.none )
-            else
-                ( (Landmark pos (label model) Nothing) :: model, Cmd.none )
+            createLandmark model pos
 
         Reset ->
             init
 
         DragStart label pos ->
-            let
-                drag =
-                    Just <| Drag pos pos
-            in
-                ( (List.map (startDrag label drag) model), Cmd.none )
+            dragStart model label pos
 
         DragAt label pos ->
-            ( (List.map (updateDrag label pos) model), Cmd.none )
+            dragUpdate model label pos
 
         DragEnd label pos ->
-            let
-                drag =
-                    Nothing
-            in
-                ( (List.map (stopDrag label) model), Cmd.none )
+            dragEnd model label pos
 
 
-stopDrag : Label -> Landmark -> Landmark
-stopDrag label landmark =
-    let
-        pos =
-            getRealPos landmark
-    in
-        { landmark | pos = pos, drag = Nothing }
-
-
-updateDrag : Label -> Mouse.Position -> Landmark -> Landmark
-updateDrag label pos landmark =
-    let
-        drag =
-            landmark.drag
-    in
-        if landmark.label == label then
-            { landmark | drag = Maybe.map (\{ start } -> Drag start pos) drag }
-        else
-            landmark
-
-
-startDrag : Label -> Maybe Drag -> Landmark -> Landmark
-startDrag label drag landmark =
-    if landmark.label == label then
-        { landmark | drag = drag }
+createLandmark : Model -> Mouse.Position -> ( Model, Cmd Msg )
+createLandmark model pos =
+    if List.length model >= 10 then
+        ( model, Cmd.none )
     else
-        landmark
+        let
+            lm =
+                Landmark pos (label model) Nothing
+        in
+            ( lm :: model, Cmd.none )
 
 
 
@@ -186,65 +134,6 @@ drawLandmarks model =
     List.map makeLandmark <| model
 
 
-slider : Model -> Svg.Svg Msg
-slider model =
-    let
-        length =
-            400
-
-        percent =
-            List.length model * (length // 10)
-    in
-        Svg.svg
-            [ SA.width <| toString (length + 100) ++ "px"
-            , SA.height "40px"
-            , viewBox "-10 -5 500 40"
-            ]
-            [ defs []
-                [ linearGradient
-                    [ SA.id "darkFaderGradient"
-                    , gradientUnits "objectBoundingBox"
-                    , x2 "0"
-                    , y2 "1"
-                    ]
-                    [ stop [ offset "0", stopColor "#D7D9DC" ] []
-                    , stop [ offset "1", stopColor "#42494C" ] []
-                    ]
-                , linearGradient
-                    [ SA.id "lightFaderGradient"
-                    , gradientUnits "objectBoundingBox"
-                    , x2 "0"
-                    , y2 "1"
-                    ]
-                    [ stop [ offset "0", stopColor "white" ] []
-                    , stop [ offset "1", stopColor "#D7D9DC" ] []
-                    ]
-                ]
-            , g []
-                [ g [ SA.id "fader", SA.style "stroke:#989B9F" ]
-                    [ rect
-                        [ SA.class "faderBackground"
-                        , SA.id "svg01"
-                        , rx "10"
-                        , SA.height "20"
-                        , SA.width (toString length)
-                        , SA.style """fill:url(#lightFaderGradient)"""
-                        ]
-                        []
-                    , rect
-                        [ SA.class "faderForeground"
-                        , SA.id "svg02"
-                        , rx "10"
-                        , SA.height "20"
-                        , SA.width (toString percent)
-                        , SA.style """fill:url(#darkFaderGradient)"""
-                        ]
-                        []
-                    ]
-                ]
-            ]
-
-
 label : Model -> String
 label model =
     (String.cons 'd') <| toString ((List.length model) + 1)
@@ -291,39 +180,52 @@ makeLandmark lm =
         ( l, svgLandmark )
 
 
-getRealPos : Landmark -> Mouse.Position
-getRealPos { pos, label, drag } =
-    case drag of
-        Nothing ->
-            pos
-
-        Just drag ->
-            Mouse.Position
-                (pos.x - drag.start.x + drag.current.x)
-                (pos.y - drag.start.y + drag.current.y)
-
-
 makeTable : Model -> List (Html Msg)
 makeTable model =
-    tableHeader :: List.reverse (List.map tableRow model)
+    (tableHeader model) :: List.reverse (List.map (tableRow model) model)
 
 
-tableRow : Landmark -> Html Msg
-tableRow lm =
-    tr []
-        [ td [] [ text lm.label ]
-        , td [] [ text (toString lm.pos.x) ]
-        , td [] [ text (toString lm.pos.y) ]
-        ]
+tableRow : Model -> Landmark -> Html Msg
+tableRow model lm =
+    let
+        distances =
+            List.map (distance lm.pos) model
+
+        tds =
+            [ td [] [ text lm.label ]
+            , td [] [ text (toString lm.pos.x) ]
+            , td [] [ text (toString lm.pos.y) ]
+            ]
+
+        tdsDistances =
+            List.map (\d -> td [] [ text <| toString d ]) distances
+    in
+        tr [] <|
+            List.append
+                tds
+            <|
+                List.reverse tdsDistances
 
 
-tableHeader : Html Msg
-tableHeader =
-    tr []
-        [ th [] [ text "Label" ]
-        , th [] [ text "X" ]
-        , th [] [ text "Y" ]
-        ]
+tableHeader : Model -> Html Msg
+tableHeader model =
+    let
+        ths =
+            [ th [] [ text "Label" ]
+            , th [] [ text "X" ]
+            , th [] [ text "Y" ]
+            ]
+    in
+        tr [] (List.append ths (thLms model))
+
+
+thLms : Model -> List (Html Msg)
+thLms model =
+    let
+        labels =
+            List.map .label model |> List.reverse
+    in
+        List.map (\l -> th [] [ text l ]) labels
 
 
 onMouseClick : Attribute Msg
