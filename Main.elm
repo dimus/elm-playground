@@ -64,12 +64,12 @@ init =
 type Msg
     = CreateLandmark Mouse.Position
     | Reset
-    | DragStart DotId Mouse.Position
-    | DragAt DotId Mouse.Position
-    | DragEnd DotId Mouse.Position
+    | DragStart Label Mouse.Position
+    | DragAt Label Mouse.Position
+    | DragEnd Label Mouse.Position
 
 
-type alias DotId =
+type alias Label =
     String
 
 
@@ -239,16 +239,20 @@ label model =
     (String.cons 'd') <| toString ((List.length model) + 1)
 
 
+makeLandmark : Landmark -> ( Label, Svg Msg )
 makeLandmark lm =
     let
+        realPos =
+            getRealPos lm
+
         x =
-            toString lm.pos.x
+            toString realPos.x
 
         y =
-            toString lm.pos.y
+            toString realPos.y
 
         yl =
-            toString (lm.pos.y - 10) ++ "px"
+            toString (realPos.y - 10) ++ "px"
 
         l =
             lm.label
@@ -274,6 +278,18 @@ makeLandmark lm =
                 ]
     in
         ( l, svgLandmark )
+
+
+getRealPos : Landmark -> Mouse.Position
+getRealPos { pos, label, drag } =
+    case drag of
+        Nothing ->
+            pos
+
+        Just drag ->
+            Mouse.Position
+                (pos.x - drag.start.x + drag.current.x)
+                (pos.y - drag.start.y + drag.current.y)
 
 
 rows model =
