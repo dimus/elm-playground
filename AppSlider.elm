@@ -1,8 +1,8 @@
 module AppSlider exposing (..)
 
 import AppTypes exposing (..)
-import Svg
-import Svg.Attributes as SA
+import Svg exposing (..)
+import Svg.Attributes as SA exposing (..)
 
 
 slider : Model -> Svg.Svg Msg

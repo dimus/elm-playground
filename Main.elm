@@ -12,6 +12,7 @@ import Svg.Keyed as SK exposing (node)
 import AppTypes exposing (..)
 import AppDrag exposing (..)
 import AppCalc exposing (..)
+import AppSlider exposing (..)
 import Svg
     exposing
         ( defs
