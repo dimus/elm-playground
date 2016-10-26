@@ -24,6 +24,7 @@ import Svg
         )
 
 
+main : Program Never
 main =
     App.program
         { init = init
@@ -103,6 +104,7 @@ update msg model =
                 ( (List.map (stopDrag label) model), Cmd.none )
 
 
+stopDrag : Label -> Landmark -> Landmark
 stopDrag label landmark =
     let
         pos =
@@ -111,6 +113,7 @@ stopDrag label landmark =
         { landmark | pos = pos, drag = Nothing }
 
 
+updateDrag : Label -> Mouse.Position -> Landmark -> Landmark
 updateDrag label pos landmark =
     let
         drag =
@@ -122,6 +125,7 @@ updateDrag label pos landmark =
             landmark
 
 
+startDrag : Label -> Maybe Drag -> Landmark -> Landmark
 startDrag label drag landmark =
     if landmark.label == label then
         { landmark | drag = drag }
@@ -171,11 +175,10 @@ view model =
             , onMouseClick
             ]
             (drawLandmarks model)
-        , div [] [ text <| toString model ]
         , br [] []
         , slider model
         , button [ onClick Reset ] [ text "Reset" ]
-        , table [] (rows model)
+        , table [] (makeTable model)
         ]
 
 
@@ -300,19 +303,22 @@ getRealPos { pos, label, drag } =
                 (pos.y - drag.start.y + drag.current.y)
 
 
-rows model =
-    header :: List.reverse (List.map row model)
+makeTable : Model -> List (Html Msg)
+makeTable model =
+    tableHeader :: List.reverse (List.map tableRow model)
 
 
-row model =
+tableRow : Landmark -> Html Msg
+tableRow lm =
     tr []
-        [ td [] [ text model.label ]
-        , td [] [ text (toString model.pos.x) ]
-        , td [] [ text (toString model.pos.y) ]
+        [ td [] [ text lm.label ]
+        , td [] [ text (toString lm.pos.x) ]
+        , td [] [ text (toString lm.pos.y) ]
         ]
 
 
-header =
+tableHeader : Html Msg
+tableHeader =
     tr []
         [ th [] [ text "Label" ]
         , th [] [ text "X" ]
@@ -320,9 +326,11 @@ header =
         ]
 
 
+onMouseClick : Attribute Msg
 onMouseClick =
     on "dblclick" (Json.map CreateLandmark Mouse.position)
 
 
+onMouseDown : Label -> Attribute Msg
 onMouseDown label =
     on "mousedown" (Json.map (DragStart label) Mouse.position)
